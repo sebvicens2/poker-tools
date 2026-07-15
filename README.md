@@ -15,5 +15,9 @@ exporter en JSON régulièrement pour ne rien perdre.
 
 ## Usage
 
-Ouvre `range-trainer.html` directement dans un navigateur, aucune
-installation nécessaire.
+En ligne : https://sebvicens2.github.io/poker-tools/
+
+En local : ouvre `range-trainer.html` directement dans un navigateur, aucune
+installation nécessaire. Le téléchargement JSON automatique (bouton
+"Exporter JSON") ne fonctionne que hors de l'aperçu artifact de claude.ai —
+en local ou via la page GitHub Pages ci-dessus, sur celle-ci.
