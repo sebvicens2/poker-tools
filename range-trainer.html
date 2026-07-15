@@ -143,6 +143,17 @@
 
   footer.note{margin-top:28px;font-size:11.5px;color:var(--text-muted);text-align:center;}
 
+  /* ---- Modals ---- */
+  .modal-overlay{position:fixed;inset:0;background:rgba(10,14,15,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;}
+  .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:var(--shadow);width:100%;max-width:560px;display:flex;flex-direction:column;gap:12px;}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .modal-head h3{margin:0;font-family:var(--font-display);font-size:16px;}
+  .modal-hint{margin:0;font-size:12.5px;color:var(--text-secondary);line-height:1.5;}
+  .modal-hint code{font-family:var(--font-mono);background:var(--surface-2);padding:1px 5px;border-radius:4px;}
+  .modal-textarea{width:100%;min-height:220px;resize:vertical;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text);font-family:var(--font-mono);font-size:12px;padding:10px;box-sizing:border-box;}
+  .modal-actions{display:flex;align-items:center;gap:12px;}
+  .copy-feedback{font-size:12.5px;color:var(--correct);}
+
   @media (max-width:720px){
     .builder{grid-template-columns:1fr;}
     .positions-rail{flex-direction:row;flex-wrap:wrap;}
@@ -182,7 +193,8 @@
               <select class="btn" id="copy-source"></select>
               <button class="btn" id="btn-copy">Copier ici</button>
               <button class="btn" id="btn-export">Exporter JSON</button>
-              <button class="btn" id="btn-import">Importer JSON</button>
+              <button class="btn" id="btn-import">Importer fichier</button>
+              <button class="btn" id="btn-paste-import">Coller JSON</button>
               <input type="file" id="file-import" accept="application/json" style="display:none;">
             </div>
           </div>
@@ -247,6 +259,35 @@
   </main>
 
   <footer class="note">Les ranges restent uniquement dans ce navigateur (localStorage) &mdash; pense &agrave; exporter r&eacute;guli&egrave;rement en JSON pour ne rien perdre.</footer>
+</div>
+
+<div class="modal-overlay" id="export-modal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>Exporter les ranges</h3>
+      <button class="btn ghost" id="btn-close-export">Fermer</button>
+    </div>
+    <p class="modal-hint">Le t&eacute;l&eacute;chargement direct ne fonctionne pas toujours dans cet aper&ccedil;u. S&eacute;lectionne tout le texte ci-dessous (ou clique Copier), puis colle-le dans un fichier <code>.json</code> ou directement dans &laquo;&nbsp;Coller JSON&nbsp;&raquo; sur l'autre appareil.</p>
+    <textarea id="export-text" class="modal-textarea" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn primary" id="btn-copy-json">Copier</button>
+      <span id="copy-feedback" class="copy-feedback"></span>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="paste-import-modal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>Importer depuis du texte</h3>
+      <button class="btn ghost" id="btn-close-paste-import">Fermer</button>
+    </div>
+    <p class="modal-hint">Colle ici le JSON export&eacute; depuis l'autre appareil.</p>
+    <textarea id="paste-import-text" class="modal-textarea" placeholder="{ &hellip; }"></textarea>
+    <div class="modal-actions">
+      <button class="btn primary" id="btn-apply-paste-import">Appliquer</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -499,17 +540,77 @@
   });
 
   document.getElementById('btn-export').addEventListener('click', function(){
-    var blob = new Blob([JSON.stringify(state.ranges, null, 2)], {type:'application/json'});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    var d = new Date();
-    var stamp = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    a.href = url;
-    a.download = 'gto-ranges-' + stamp + '.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    var text = JSON.stringify(state.ranges, null, 2);
+    document.getElementById('export-text').value = text;
+    document.getElementById('copy-feedback').textContent = '';
+    document.getElementById('export-modal').style.display = 'flex';
+
+    // Best-effort real download alongside the visible/copyable text — works
+    // outside the artifact sandbox (e.g. once cloned locally), silently
+    // no-ops if the iframe blocks it.
+    try{
+      var blob = new Blob([text], {type:'application/json'});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      var d = new Date();
+      var stamp = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      a.href = url;
+      a.download = 'gto-ranges-' + stamp + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    }catch(e){}
+  });
+
+  document.getElementById('btn-close-export').addEventListener('click', function(){
+    document.getElementById('export-modal').style.display = 'none';
+  });
+
+  document.getElementById('btn-copy-json').addEventListener('click', function(){
+    var ta = document.getElementById('export-text');
+    ta.focus();
+    ta.select();
+    var fb = document.getElementById('copy-feedback');
+    function fallback(){
+      try{
+        var ok = document.execCommand('copy');
+        fb.textContent = ok ? 'Copié !' : 'Copie automatique indisponible — utilise Ctrl+C.';
+      }catch(e){
+        fb.textContent = 'Copie automatique indisponible — utilise Ctrl+C.';
+      }
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ta.value).then(function(){
+        fb.textContent = 'Copié !';
+      }).catch(fallback);
+    } else {
+      fallback();
+    }
+  });
+
+  document.getElementById('btn-paste-import').addEventListener('click', function(){
+    document.getElementById('paste-import-text').value = '';
+    document.getElementById('paste-import-modal').style.display = 'flex';
+  });
+  document.getElementById('btn-close-paste-import').addEventListener('click', function(){
+    document.getElementById('paste-import-modal').style.display = 'none';
+  });
+  document.getElementById('btn-apply-paste-import').addEventListener('click', function(){
+    var raw = document.getElementById('paste-import-text').value.trim();
+    if(!raw) return;
+    try{
+      var parsed = JSON.parse(raw);
+      if(!confirm('Remplacer toutes les ranges actuelles par ce JSON ?')) return;
+      state.ranges = parsed;
+      saveState();
+      refreshGrid();
+      renderStats();
+      renderCopySource();
+      document.getElementById('paste-import-modal').style.display = 'none';
+    }catch(err){
+      alert('JSON invalide.');
+    }
   });
 
   document.getElementById('btn-import').addEventListener('click', function(){
