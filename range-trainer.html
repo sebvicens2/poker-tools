@@ -507,7 +507,7 @@
     host.innerHTML = RANKS.map(function(rank){
       var counts = {fold:0, limp:0, raise:0};
       HANDS.forEach(function(h){
-        if(h.code.charAt(0) !== rank) return;
+        if(h.code.charAt(0) !== rank && h.code.charAt(1) !== rank) return;
         var a = getAction(currentPos, currentStack, h.code);
         counts[a] += combosFor(h.code);
       });
@@ -517,7 +517,7 @@
         var pct = total ? (counts[a] / total * 100) : 0;
         return '<span style="width:' + pct.toFixed(2) + '%;background:' + (a==='fold' ? 'var(--fold-swatch)' : 'var(--'+a+')') + '"></span>';
       }).join('');
-      return '<div class="rank-row" title="' + rank + 'x &mdash; ' + (total - counts.fold) + '/' + total + ' combos joués">' +
+      return '<div class="rank-row" title="Combos contenant un ' + rank + ' &mdash; ' + (total - counts.fold) + '/' + total + ' joués">' +
         '<span class="rank-label">' + rank + '</span>' +
         '<span class="rank-bar">' + barHtml + '</span>' +
         '<span class="rank-pct">' + openPct + '%</span>' +
