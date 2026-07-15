@@ -1,0 +1,709 @@
+<title>Range Trainer — MTT 9-max</title>
+<style>
+  :root{
+    --bg:#f4f6f4; --surface:#ffffff; --surface-2:#eef1ef; --surface-3:#e3e7e4;
+    --border:#d7dcd8; --text:#12191a; --text-secondary:#4d5a56; --text-muted:#7c8985;
+    --accent:#1f6f78; --accent-strong:#175961; --accent-contrast:#ffffff;
+    --fold-swatch:#94a3ad; --limp:#d99a2b; --limp-text:#241a06; --raise:#c4432f; --raise-text:#ffffff;
+    --correct:#2f8f5b; --correct-bg:#e4f3ea; --incorrect:#c23b52; --incorrect-bg:#fbe7ea;
+    --card-red:#b3273f; --shadow:0 1px 2px rgba(18,25,26,.06), 0 8px 24px -12px rgba(18,25,26,.18);
+    --font-display: ui-sans-serif, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-body: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+    --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", Consolas, "Roboto Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#11171a; --surface:#192124; --surface-2:#202a2d; --surface-3:#273336;
+      --border:#2b3538; --text:#eef2f0; --text-secondary:#a3b3ae; --text-muted:#71827d;
+      --accent:#4fb3ad; --accent-strong:#6fc9c3; --accent-contrast:#08201e;
+      --fold-swatch:#5b6b73; --limp:#bd8228; --limp-text:#fff6e3; --raise:#e0604a; --raise-text:#2a0f09;
+      --correct:#4fbf85; --correct-bg:#173226; --incorrect:#e2607a; --incorrect-bg:#3a1b22;
+      --card-red:#f0899a; --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#11171a; --surface:#192124; --surface-2:#202a2d; --surface-3:#273336;
+    --border:#2b3538; --text:#eef2f0; --text-secondary:#a3b3ae; --text-muted:#71827d;
+    --accent:#4fb3ad; --accent-strong:#6fc9c3; --accent-contrast:#08201e;
+    --fold-swatch:#5b6b73; --limp:#bd8228; --limp-text:#fff6e3; --raise:#e0604a; --raise-text:#2a0f09;
+    --correct:#4fbf85; --correct-bg:#173226; --incorrect:#e2607a; --incorrect-bg:#3a1b22;
+    --card-red:#f0899a; --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+  :root[data-theme="light"]{
+    --bg:#f4f6f4; --surface:#ffffff; --surface-2:#eef1ef; --surface-3:#e3e7e4;
+    --border:#d7dcd8; --text:#12191a; --text-secondary:#4d5a56; --text-muted:#7c8985;
+    --accent:#1f6f78; --accent-strong:#175961; --accent-contrast:#ffffff;
+    --fold-swatch:#94a3ad; --limp:#d99a2b; --limp-text:#241a06; --raise:#c4432f; --raise-text:#ffffff;
+    --correct:#2f8f5b; --correct-bg:#e4f3ea; --incorrect:#c23b52; --incorrect-bg:#fbe7ea;
+    --card-red:#b3273f; --shadow:0 1px 2px rgba(18,25,26,.06), 0 8px 24px -12px rgba(18,25,26,.18);
+  }
+
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);}
+  button{font-family:inherit;}
+  .app{max-width:1180px;margin:0 auto;padding:20px 20px 64px;}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:18px;margin-bottom:20px;border-bottom:1px solid var(--border);}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand-mark{width:38px;height:38px;border-radius:9px;background:var(--accent);color:var(--accent-contrast);display:flex;align-items:center;justify-content:center;font-size:19px;flex:none;}
+  .brand h1{font-family:var(--font-display);font-size:19px;margin:0;letter-spacing:-.01em;text-wrap:balance;}
+  .brand p{margin:1px 0 0;font-size:12.5px;color:var(--text-secondary);}
+
+  .tabs{display:flex;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px;}
+  .tab{border:none;background:transparent;color:var(--text-secondary);padding:8px 16px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;}
+  .tab.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow);}
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .rail-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+
+  /* ---- Builder ---- */
+  .builder{display:grid;grid-template-columns:140px 1fr;gap:20px;}
+  .positions-rail{display:flex;flex-direction:column;gap:6px;}
+  .pos-btn{text-align:left;border:1px solid var(--border);background:var(--surface);color:var(--text);padding:10px 12px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer;}
+  .pos-btn.active{background:var(--accent);border-color:var(--accent);color:var(--accent-contrast);}
+  .pos-btn .kind{display:block;font-size:10.5px;font-weight:500;opacity:.75;margin-top:1px;}
+
+  .builder-main{min-width:0;}
+  .stack-row{margin-bottom:16px;}
+  .stack-buttons{display:flex;flex-wrap:wrap;gap:6px;}
+  .stack-btn{border:1px solid var(--border);background:var(--surface);color:var(--text);padding:7px 12px;border-radius:8px;font-size:13px;font-variant-numeric:tabular-nums;font-family:var(--font-mono);cursor:pointer;}
+  .stack-btn.active{background:var(--accent);border-color:var(--accent);color:var(--accent-contrast);}
+
+  .toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+  .tool-group{display:flex;gap:6px;}
+  .tool-btn{display:flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);padding:8px 13px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+  .tool-btn .swatch{width:10px;height:10px;border-radius:3px;}
+  .tool-btn.active{outline:2px solid var(--accent);outline-offset:-1px;}
+  .builder-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .btn{border:1px solid var(--border);background:var(--surface);color:var(--text);padding:8px 12px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .btn:hover{background:var(--surface-2);}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-contrast);}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--text-secondary);text-decoration:underline;text-underline-offset:2px;}
+  select.btn{cursor:pointer;}
+
+  .grid-wrap{overflow-x:auto;padding-bottom:4px;}
+  .hand-grid{display:grid;grid-template-columns:repeat(13,minmax(38px,1fr));gap:3px;width:100%;min-width:560px;user-select:none;touch-action:none;}
+  .hand-cell{position:relative;aspect-ratio:1/1;border-radius:6px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;font-weight:600;cursor:pointer;}
+  .hand-cell.action-limp{background:var(--limp);color:var(--limp-text);border-color:transparent;}
+  .hand-cell.action-raise{background:var(--raise);color:var(--raise-text);border-color:transparent;}
+  .hand-cell.action-limp::after{content:'';position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.55;}
+  .hand-cell.action-raise::after{content:'';position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:1px;background:currentColor;opacity:.55;}
+
+  .legend-stats{margin-top:16px;display:flex;flex-wrap:wrap;gap:22px;align-items:center;}
+  .stat-item{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-secondary);}
+  .stat-dot{width:9px;height:9px;border-radius:3px;flex:none;}
+  .stat-item b{color:var(--text);font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+  .prop-bar{display:flex;width:100%;max-width:360px;height:8px;border-radius:4px;overflow:hidden;background:var(--surface-2);margin-top:8px;}
+  .prop-bar span{height:100%;}
+
+  /* ---- Trainer ---- */
+  .quiz-setup{display:grid;grid-template-columns:1fr 1fr;gap:24px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:var(--shadow);}
+  .chip-group{display:flex;flex-wrap:wrap;gap:7px;}
+  .chip{border:1px solid var(--border);background:var(--surface-2);color:var(--text-secondary);padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--font-mono);}
+  .chip.active{background:var(--accent);border-color:var(--accent);color:var(--accent-contrast);}
+  .setup-actions{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;padding-top:6px;border-top:1px solid var(--border);}
+
+  .quiz-topline{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .score-strip{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--text-secondary);}
+  .score-strip b{color:var(--text);font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+
+  .quiz-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 24px;box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;gap:22px;}
+  .scenario-pill{display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .scenario-pill .pos-stack{font-family:var(--font-mono);font-weight:700;font-size:14px;background:var(--surface-2);border:1px solid var(--border);padding:6px 14px;border-radius:999px;}
+  .scenario-pill .context{font-size:12px;color:var(--text-muted);}
+
+  .cards-display{display:flex;gap:10px;}
+  .card{width:76px;height:106px;border-radius:10px;border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:var(--font-mono);}
+  .card .card-rank{font-size:26px;font-weight:700;line-height:1;}
+  .card .card-suit{font-size:22px;line-height:1;}
+  .card.black{color:var(--text);}
+  .card.red{color:var(--card-red);}
+
+  .answer-buttons{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+  .ans-btn{border:2px solid var(--border);background:var(--surface);color:var(--text);padding:12px 24px;border-radius:11px;font-size:14.5px;font-weight:700;cursor:pointer;min-width:110px;}
+  .ans-btn[data-action="fold"]:hover{border-color:var(--fold-swatch);}
+  .ans-btn[data-action="limp"]:hover{border-color:var(--limp);}
+  .ans-btn[data-action="raise"]:hover{border-color:var(--raise);}
+  .ans-btn:disabled{opacity:.5;cursor:default;}
+
+  .feedback{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:10px;font-size:13.5px;font-weight:600;}
+  .feedback.correct{background:var(--correct-bg);color:var(--correct);}
+  .feedback.incorrect{background:var(--incorrect-bg);color:var(--incorrect);}
+
+  .mistake-log{margin-top:24px;}
+  .mistake-log ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;}
+  .mistake-log li{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:var(--font-mono);}
+  .mistake-log .m-empty{color:var(--text-muted);font-family:var(--font-body);padding:10px 2px;}
+  .mistake-log .m-hand{font-weight:700;}
+  .mistake-log .m-detail{color:var(--text-secondary);}
+  .mistake-log .m-wrong{color:var(--incorrect);}
+  .mistake-log .m-right{color:var(--correct);}
+
+  footer.note{margin-top:28px;font-size:11.5px;color:var(--text-muted);text-align:center;}
+
+  @media (max-width:720px){
+    .builder{grid-template-columns:1fr;}
+    .positions-rail{flex-direction:row;flex-wrap:wrap;}
+    .quiz-setup{grid-template-columns:1fr;}
+  }
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">&#9824;</span>
+      <div class="brand-text">
+        <h1>Range Trainer</h1>
+        <p>MTT 9-max &mdash; open &amp; limp/raise SB</p>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="builder">Builder</button>
+      <button class="tab" data-tab="trainer">Trainer</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="view-builder" class="view active">
+      <div class="builder">
+        <aside class="positions-rail" id="positions-rail"></aside>
+        <div class="builder-main">
+          <div class="stack-row">
+            <div class="rail-label">Stack (bb)</div>
+            <div class="stack-buttons" id="stack-buttons"></div>
+          </div>
+
+          <div class="toolbar">
+            <div class="tool-group" id="tool-group"></div>
+            <div class="builder-actions">
+              <button class="btn" id="btn-clear">Tout fold</button>
+              <select class="btn" id="copy-source"></select>
+              <button class="btn" id="btn-copy">Copier ici</button>
+              <button class="btn" id="btn-export">Exporter JSON</button>
+              <button class="btn" id="btn-import">Importer JSON</button>
+              <input type="file" id="file-import" accept="application/json" style="display:none;">
+            </div>
+          </div>
+
+          <div class="grid-wrap">
+            <div class="hand-grid" id="hand-grid"></div>
+          </div>
+
+          <div class="legend-stats" id="legend-stats"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-trainer" class="view">
+      <div class="trainer">
+        <div class="quiz-setup" id="quiz-setup">
+          <div class="setup-col">
+            <div class="rail-label">Positions &agrave; tester</div>
+            <div class="chip-group" id="pos-checks"></div>
+          </div>
+          <div class="setup-col">
+            <div class="rail-label">Stacks &agrave; tester (bb)</div>
+            <div class="chip-group" id="stack-checks"></div>
+          </div>
+          <div class="setup-actions">
+            <button class="btn" id="btn-select-all">Tout s&eacute;lectionner</button>
+            <button class="btn" id="btn-select-none">Tout d&eacute;s&eacute;lectionner</button>
+            <button class="btn primary" id="btn-start-quiz">D&eacute;marrer</button>
+          </div>
+        </div>
+
+        <div class="quiz-active" id="quiz-active" style="display:none;">
+          <div class="quiz-topline">
+            <button class="btn ghost" id="btn-edit-selection">&larr; Modifier la s&eacute;lection</button>
+            <div class="score-strip">
+              <span>Score <b id="score-count">0/0</b></span>
+              <span>Pr&eacute;cision <b id="score-pct">&mdash;</b></span>
+              <span>S&eacute;rie <b id="streak-count">0</b></span>
+              <span>Record <b id="streak-best">0</b></span>
+              <button class="btn ghost" id="btn-reset-session">R&eacute;initialiser</button>
+            </div>
+          </div>
+
+          <div class="quiz-card">
+            <div class="scenario-pill">
+              <span class="pos-stack" id="scenario-pill">UTG &middot; 40bb</span>
+              <span class="context">Tout le monde a fold&eacute; avant toi.</span>
+            </div>
+            <div class="cards-display" id="cards-display"></div>
+            <div class="answer-buttons" id="answer-buttons"></div>
+            <div class="feedback" id="feedback" style="display:none;"></div>
+            <button class="btn primary" id="btn-next" style="display:none;">Main suivante &rarr;</button>
+          </div>
+
+          <div class="mistake-log">
+            <div class="rail-label">Derni&egrave;res erreurs</div>
+            <ul id="mistake-list"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="note">Les ranges restent uniquement dans ce navigateur (localStorage) &mdash; pense &agrave; exporter r&eacute;guli&egrave;rement en JSON pour ne rien perdre.</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var RANKS = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+  var SUITS = ['s','h','d','c'];
+  var SUIT_GLYPH = {s:'♠', h:'♥', d:'♦', c:'♣'};
+  var POSITIONS = [
+    {key:'UTG', label:'UTG', kind:'open'},
+    {key:'UTG1', label:'UTG+1', kind:'open'},
+    {key:'LJ', label:'LJ', kind:'open'},
+    {key:'HJ', label:'HJ', kind:'open'},
+    {key:'CO', label:'CO', kind:'open'},
+    {key:'BTN', label:'BTN', kind:'open'},
+    {key:'SB', label:'SB', kind:'sb'}
+  ];
+  var STACKS = [10,20,30,40,50,60,70,80,90,100];
+  var STORAGE_KEY = 'gto-range-trainer:v1';
+
+  function posInfo(key){ for(var i=0;i<POSITIONS.length;i++){ if(POSITIONS[i].key===key) return POSITIONS[i]; } return POSITIONS[0]; }
+  function actionsFor(posKey){ return posInfo(posKey).kind==='sb' ? ['fold','limp','raise'] : ['fold','raise']; }
+
+  function buildHands(){
+    var hands = [];
+    for(var i=0;i<13;i++){
+      for(var j=0;j<13;j++){
+        var code;
+        if(i===j) code = RANKS[i]+RANKS[j];
+        else if(i<j) code = RANKS[i]+RANKS[j]+'s';
+        else code = RANKS[j]+RANKS[i]+'o';
+        hands.push({row:i, col:j, code:code});
+      }
+    }
+    return hands;
+  }
+  var HANDS = buildHands();
+
+  function combosFor(code){
+    if(code.length===2) return 6;
+    return code.charAt(2)==='s' ? 4 : 12;
+  }
+
+  var HAND_POOL = HANDS.map(function(h){ return {code:h.code, weight:combosFor(h.code)}; });
+  var TOTAL_WEIGHT = HAND_POOL.reduce(function(s,h){ return s+h.weight; }, 0);
+  function randomHandCode(){
+    var r = Math.random()*TOTAL_WEIGHT;
+    for(var i=0;i<HAND_POOL.length;i++){
+      r -= HAND_POOL[i].weight;
+      if(r<=0) return HAND_POOL[i].code;
+    }
+    return HAND_POOL[HAND_POOL.length-1].code;
+  }
+
+  var state = { ranges: {} };
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){ var parsed = JSON.parse(raw); state.ranges = parsed.ranges || {}; }
+    }catch(e){ console.warn('load failed', e); }
+  }
+  function saveState(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ranges: state.ranges})); }
+    catch(e){ console.warn('save failed', e); }
+  }
+  function getAction(pos, stack, code){
+    var p = state.ranges[pos]; if(!p) return 'fold';
+    var s = p[stack]; if(!s) return 'fold';
+    return s[code] || 'fold';
+  }
+  function setAction(pos, stack, code, action){
+    if(!state.ranges[pos]) state.ranges[pos] = {};
+    if(!state.ranges[pos][stack]) state.ranges[pos][stack] = {};
+    if(action==='fold'){ delete state.ranges[pos][stack][code]; }
+    else{ state.ranges[pos][stack][code] = action; }
+    saveState();
+  }
+
+  loadState();
+
+  /* ---------------- Tabs ---------------- */
+  var tabs = document.querySelectorAll('.tab');
+  var views = { builder: document.getElementById('view-builder'), trainer: document.getElementById('view-trainer') };
+  tabs.forEach(function(t){
+    t.addEventListener('click', function(){
+      tabs.forEach(function(o){ o.classList.remove('active'); });
+      t.classList.add('active');
+      Object.keys(views).forEach(function(k){ views[k].classList.remove('active'); });
+      views[t.dataset.tab].classList.add('active');
+    });
+  });
+
+  /* ---------------- Builder ---------------- */
+  var currentPos = 'UTG';
+  var currentStack = 40;
+  var currentTool = 'raise';
+  var gridEls = {};
+
+  var railEl = document.getElementById('positions-rail');
+  POSITIONS.forEach(function(p){
+    var btn = document.createElement('button');
+    btn.className = 'pos-btn' + (p.key===currentPos ? ' active' : '');
+    btn.dataset.pos = p.key;
+    btn.innerHTML = p.label + '<span class="kind">' + (p.kind==='sb' ? 'fold / limp / raise' : 'fold / raise') + '</span>';
+    btn.addEventListener('click', function(){ selectPosition(p.key); });
+    railEl.appendChild(btn);
+  });
+
+  var stackButtonsEl = document.getElementById('stack-buttons');
+  STACKS.forEach(function(s){
+    var btn = document.createElement('button');
+    btn.className = 'stack-btn' + (s===currentStack ? ' active' : '');
+    btn.dataset.stack = s;
+    btn.textContent = s + 'bb';
+    btn.addEventListener('click', function(){ selectStack(s); });
+    stackButtonsEl.appendChild(btn);
+  });
+
+  var TOOL_META = {
+    fold: {label:'Fold', color:'var(--fold-swatch)'},
+    limp: {label:'Limp', color:'var(--limp)'},
+    raise: {label:'Raise', color:'var(--raise)'}
+  };
+  var toolGroupEl = document.getElementById('tool-group');
+  function renderToolbar(){
+    toolGroupEl.innerHTML = '';
+    actionsFor(currentPos).forEach(function(a){
+      var btn = document.createElement('button');
+      btn.className = 'tool-btn' + (a===currentTool ? ' active' : '');
+      btn.dataset.tool = a;
+      btn.innerHTML = '<span class="swatch" style="background:' + TOOL_META[a].color + '"></span>' + TOOL_META[a].label;
+      btn.addEventListener('click', function(){ currentTool = a; renderToolbar(); });
+      toolGroupEl.appendChild(btn);
+    });
+    if(actionsFor(currentPos).indexOf(currentTool) === -1){ currentTool = 'raise'; renderToolbar(); }
+  }
+
+  var gridEl = document.getElementById('hand-grid');
+  HANDS.forEach(function(h){
+    var cell = document.createElement('div');
+    cell.className = 'hand-cell';
+    cell.dataset.code = h.code;
+    cell.textContent = h.code;
+    gridEl.appendChild(cell);
+    gridEls[h.code] = cell;
+  });
+
+  function updateCellVisual(code){
+    var el = gridEls[code];
+    var action = getAction(currentPos, currentStack, code);
+    el.className = 'hand-cell action-' + action;
+  }
+  function refreshGrid(){ HANDS.forEach(function(h){ updateCellVisual(h.code); }); }
+
+  var isPainting = false;
+  gridEl.addEventListener('pointerdown', function(e){
+    var cell = e.target.closest('.hand-cell');
+    if(!cell) return;
+    isPainting = true;
+    paintCell(cell.dataset.code);
+    e.preventDefault();
+  });
+  gridEl.addEventListener('pointerover', function(e){
+    if(!isPainting) return;
+    var cell = e.target.closest('.hand-cell');
+    if(!cell) return;
+    paintCell(cell.dataset.code);
+  });
+  window.addEventListener('pointerup', function(){ isPainting = false; });
+  window.addEventListener('pointercancel', function(){ isPainting = false; });
+
+  function paintCell(code){
+    setAction(currentPos, currentStack, code, currentTool);
+    updateCellVisual(code);
+    renderStats();
+  }
+
+  function renderStats(){
+    var counts = {fold:0, limp:0, raise:0};
+    HANDS.forEach(function(h){
+      var a = getAction(currentPos, currentStack, h.code);
+      counts[a] += combosFor(h.code);
+    });
+    var total = 1326;
+    var legend = document.getElementById('legend-stats');
+    var order = actionsFor(currentPos);
+    var barHtml = '<div class="prop-bar">';
+    order.forEach(function(a){
+      var pct = (counts[a]/total*100);
+      barHtml += '<span style="width:' + pct.toFixed(2) + '%;background:' + (a==='fold' ? 'var(--fold-swatch)' : 'var(--'+a+')') + '"></span>';
+    });
+    barHtml += '</div>';
+    var itemsHtml = order.map(function(a){
+      var pct = (counts[a]/total*100).toFixed(1);
+      return '<div class="stat-item"><span class="stat-dot" style="background:' + (a==='fold' ? 'var(--fold-swatch)' : 'var(--'+a+')') + '"></span>' + TOOL_META[a].label + ' <b>' + counts[a] + '</b> combos (' + pct + '%)</div>';
+    }).join('');
+    legend.innerHTML = '<div style="width:100%">' + itemsHtml + barHtml + '</div>';
+  }
+
+  function renderCopySource(){
+    var sel = document.getElementById('copy-source');
+    sel.innerHTML = '';
+    POSITIONS.forEach(function(p){
+      STACKS.forEach(function(s){
+        if(p.key===currentPos && s===currentStack) return;
+        var opt = document.createElement('option');
+        opt.value = p.key + '|' + s;
+        opt.textContent = p.label + ' · ' + s + 'bb';
+        sel.appendChild(opt);
+      });
+    });
+  }
+
+  function selectPosition(key){
+    currentPos = key;
+    document.querySelectorAll('.pos-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.pos===key); });
+    renderToolbar();
+    refreshGrid();
+    renderStats();
+    renderCopySource();
+  }
+  function selectStack(s){
+    currentStack = s;
+    document.querySelectorAll('.stack-btn').forEach(function(b){ b.classList.toggle('active', Number(b.dataset.stack)===s); });
+    refreshGrid();
+    renderStats();
+    renderCopySource();
+  }
+
+  document.getElementById('btn-clear').addEventListener('click', function(){
+    if(!confirm('Remettre toutes les mains de ' + currentPos + ' · ' + currentStack + 'bb sur fold ?')) return;
+    if(state.ranges[currentPos]) delete state.ranges[currentPos][currentStack];
+    saveState();
+    refreshGrid();
+    renderStats();
+  });
+
+  document.getElementById('btn-copy').addEventListener('click', function(){
+    var val = document.getElementById('copy-source').value;
+    if(!val) return;
+    var parts = val.split('|');
+    var srcPos = parts[0], srcStack = parts[1];
+    var src = (state.ranges[srcPos] && state.ranges[srcPos][srcStack]) || {};
+    if(!confirm('Copier la range ' + srcPos + ' · ' + srcStack + 'bb vers ' + currentPos + ' · ' + currentStack + 'bb ? Cela écrase la range actuelle.')) return;
+    if(!state.ranges[currentPos]) state.ranges[currentPos] = {};
+    state.ranges[currentPos][currentStack] = JSON.parse(JSON.stringify(src));
+    saveState();
+    refreshGrid();
+    renderStats();
+  });
+
+  document.getElementById('btn-export').addEventListener('click', function(){
+    var blob = new Blob([JSON.stringify(state.ranges, null, 2)], {type:'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var d = new Date();
+    var stamp = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    a.href = url;
+    a.download = 'gto-ranges-' + stamp + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('btn-import').addEventListener('click', function(){
+    document.getElementById('file-import').click();
+  });
+  document.getElementById('file-import').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var parsed = JSON.parse(reader.result);
+        if(!confirm('Remplacer toutes les ranges actuelles par le contenu de ce fichier ?')) return;
+        state.ranges = parsed;
+        saveState();
+        refreshGrid();
+        renderStats();
+        renderCopySource();
+      }catch(err){
+        alert('Fichier JSON invalide.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  renderToolbar();
+  refreshGrid();
+  renderStats();
+  renderCopySource();
+
+  /* ---------------- Trainer ---------------- */
+  var quizPositions = {};
+  var quizStacks = {};
+  POSITIONS.forEach(function(p){ quizPositions[p.key] = true; });
+  STACKS.forEach(function(s){ quizStacks[s] = true; });
+
+  var posChecksEl = document.getElementById('pos-checks');
+  POSITIONS.forEach(function(p){
+    var chip = document.createElement('button');
+    chip.className = 'chip active';
+    chip.textContent = p.label;
+    chip.addEventListener('click', function(){
+      quizPositions[p.key] = !quizPositions[p.key];
+      chip.classList.toggle('active', quizPositions[p.key]);
+    });
+    posChecksEl.appendChild(chip);
+  });
+  var stackChecksEl = document.getElementById('stack-checks');
+  STACKS.forEach(function(s){
+    var chip = document.createElement('button');
+    chip.className = 'chip active';
+    chip.textContent = s + 'bb';
+    chip.addEventListener('click', function(){
+      quizStacks[s] = !quizStacks[s];
+      chip.classList.toggle('active', quizStacks[s]);
+    });
+    stackChecksEl.appendChild(chip);
+  });
+
+  document.getElementById('btn-select-all').addEventListener('click', function(){
+    POSITIONS.forEach(function(p){ quizPositions[p.key] = true; });
+    STACKS.forEach(function(s){ quizStacks[s] = true; });
+    document.querySelectorAll('#pos-checks .chip, #stack-checks .chip').forEach(function(c){ c.classList.add('active'); });
+  });
+  document.getElementById('btn-select-none').addEventListener('click', function(){
+    POSITIONS.forEach(function(p){ quizPositions[p.key] = false; });
+    STACKS.forEach(function(s){ quizStacks[s] = false; });
+    document.querySelectorAll('#pos-checks .chip, #stack-checks .chip').forEach(function(c){ c.classList.remove('active'); });
+  });
+
+  var session = {asked:0, correct:0, streak:0, best:0, mistakes:[]};
+  var current = null;
+
+  function activeKeys(map){ return Object.keys(map).filter(function(k){ return map[k]; }); }
+
+  document.getElementById('btn-start-quiz').addEventListener('click', function(){
+    var posPool = activeKeys(quizPositions);
+    var stackPool = activeKeys(quizStacks);
+    if(posPool.length===0 || stackPool.length===0){
+      alert('Sélectionne au moins une position et un stack.');
+      return;
+    }
+    session = {asked:0, correct:0, streak:0, best:0, mistakes:[]};
+    updateScoreStrip();
+    renderMistakes();
+    document.getElementById('quiz-setup').style.display = 'none';
+    document.getElementById('quiz-active').style.display = 'block';
+    nextQuestion(posPool, stackPool);
+  });
+
+  document.getElementById('btn-edit-selection').addEventListener('click', function(){
+    document.getElementById('quiz-active').style.display = 'none';
+    document.getElementById('quiz-setup').style.display = 'grid';
+  });
+
+  document.getElementById('btn-reset-session').addEventListener('click', function(){
+    session = {asked:0, correct:0, streak:0, best:0, mistakes:[]};
+    updateScoreStrip();
+    renderMistakes();
+  });
+
+  function parseCode(code){
+    if(code.length===2) return {r1:code.charAt(0), r2:code.charAt(1), type:'pair'};
+    return {r1:code.charAt(0), r2:code.charAt(1), type: code.charAt(2)==='s' ? 'suited' : 'offsuit'};
+  }
+  function randomSuit(){ return SUITS[Math.floor(Math.random()*4)]; }
+  function makeCards(code){
+    var parsed = parseCode(code);
+    var s1 = randomSuit(), s2;
+    if(parsed.type==='suited'){ s2 = s1; }
+    else{ do{ s2 = randomSuit(); } while(s2===s1); }
+    return [{rank:parsed.r1, suit:s1}, {rank:parsed.r2, suit:s2}];
+  }
+  function cardHtml(c){
+    var cls = (c.suit==='h' || c.suit==='d') ? 'red' : 'black';
+    var rank = c.rank==='T' ? '10' : c.rank;
+    return '<div class="card ' + cls + '"><span class="card-rank">' + rank + '</span><span class="card-suit">' + SUIT_GLYPH[c.suit] + '</span></div>';
+  }
+
+  var lastPosPool = [], lastStackPool = [];
+  function nextQuestion(posPool, stackPool){
+    if(posPool) lastPosPool = posPool;
+    if(stackPool) lastStackPool = stackPool;
+    var pos = lastPosPool[Math.floor(Math.random()*lastPosPool.length)];
+    var stack = lastStackPool[Math.floor(Math.random()*lastStackPool.length)];
+    var code = randomHandCode();
+    current = {pos:pos, stack:stack, code:code, correctAction: getAction(pos, stack, code)};
+
+    document.getElementById('scenario-pill').textContent = posInfo(pos).label + ' · ' + stack + 'bb';
+    document.getElementById('cards-display').innerHTML = makeCards(code).map(cardHtml).join('');
+
+    var answerEl = document.getElementById('answer-buttons');
+    answerEl.innerHTML = '';
+    actionsFor(pos).forEach(function(a){
+      var btn = document.createElement('button');
+      btn.className = 'ans-btn';
+      btn.dataset.action = a;
+      btn.textContent = TOOL_META[a].label;
+      btn.addEventListener('click', function(){ answer(a); });
+      answerEl.appendChild(btn);
+    });
+
+    document.getElementById('feedback').style.display = 'none';
+    document.getElementById('btn-next').style.display = 'none';
+  }
+
+  function answer(action){
+    document.querySelectorAll('.ans-btn').forEach(function(b){ b.disabled = true; });
+    var correct = action === current.correctAction;
+    session.asked++;
+    if(correct){
+      session.correct++; session.streak++; session.best = Math.max(session.best, session.streak);
+    } else {
+      session.streak = 0;
+      session.mistakes.unshift({pos:current.pos, stack:current.stack, code:current.code, yourAction:action, correctAction:current.correctAction});
+      session.mistakes = session.mistakes.slice(0,30);
+    }
+    var fb = document.getElementById('feedback');
+    fb.className = 'feedback ' + (correct ? 'correct' : 'incorrect');
+    fb.textContent = correct ? 'Correct — ' + TOOL_META[current.correctAction].label : 'Faux — la bonne réponse était ' + TOOL_META[current.correctAction].label;
+    fb.style.display = 'flex';
+    document.getElementById('btn-next').style.display = 'inline-block';
+    updateScoreStrip();
+    if(!correct) renderMistakes();
+  }
+
+  document.getElementById('btn-next').addEventListener('click', function(){ nextQuestion(); });
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Enter' && document.getElementById('btn-next').style.display!=='none' && views.trainer.classList.contains('active')){
+      nextQuestion();
+    }
+  });
+
+  function updateScoreStrip(){
+    document.getElementById('score-count').textContent = session.correct + '/' + session.asked;
+    document.getElementById('score-pct').textContent = session.asked ? Math.round(session.correct/session.asked*100) + '%' : '—';
+    document.getElementById('streak-count').textContent = session.streak;
+    document.getElementById('streak-best').textContent = session.best;
+  }
+
+  function renderMistakes(){
+    var list = document.getElementById('mistake-list');
+    if(session.mistakes.length===0){
+      list.innerHTML = '<li class="m-empty">Aucune erreur pour l\'instant.</li>';
+      return;
+    }
+    list.innerHTML = session.mistakes.map(function(m){
+      return '<li><span class="m-hand">' + m.code + ' &middot; ' + posInfo(m.pos).label + ' ' + m.stack + 'bb</span>' +
+        '<span class="m-detail">toi: <span class="m-wrong">' + TOOL_META[m.yourAction].label + '</span> &rarr; correct: <span class="m-right">' + TOOL_META[m.correctAction].label + '</span></span></li>';
+    }).join('');
+  }
+
+  renderMistakes();
+  updateScoreStrip();
+})();
+</script>
